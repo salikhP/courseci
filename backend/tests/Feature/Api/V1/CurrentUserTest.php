@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
@@ -24,7 +25,8 @@ class CurrentUserTest extends TestCase
             ->getJson('/api/v1/user')
             ->assertOk()
             ->assertJsonPath('data.id', $user->id)
-            ->assertJsonPath('data.email', $user->email);
+            ->assertJsonPath('data.email', $user->email)
+            ->assertJsonPath('data.role', UserRole::Student->value);
     }
 
     public function test_returns_current_user_for_mobile_token(): void
@@ -36,6 +38,7 @@ class CurrentUserTest extends TestCase
             ->getJson('/api/v1/user')
             ->assertOk()
             ->assertJsonPath('data.id', $user->id)
-            ->assertJsonPath('data.email', $user->email);
+            ->assertJsonPath('data.email', $user->email)
+            ->assertJsonPath('data.role', UserRole::Student->value);
     }
 }
