@@ -1,0 +1,130 @@
+// Run registration once, or change student_email before registering again.
+
+### Register a student
+# @name registerStudent
+POST {{base_url}}/api/v1/auth/register
+Accept: application/json
+Content-Type: application/json
+
+{
+  "name": "{{student_name}}",
+  "email": "{{student_email}}",
+  "password": "{{student_password}}",
+  "password_confirmation": "{{student_password}}"
+}
+
+> {%
+    client.test("Student is registered", function () {
+        client.assert(response.status === 201, "Expected 201 Created");
+        client.assert(response.body.data.role === "student", "Expected student role");
+    });
+%}
+
+### Create a mobile token
+# @name createMobileToken
+# @no-log
+POST {{base_url}}/api/v1/auth/tokens
+Accept: application/json
+Content-Type: application/json
+
+{
+  "email": "{{student_email}}",
+  "password": "{{student_password}}",
+  "device_name": "{{device_name}}"
+}
+
+> {%
+    client.test("Mobile token is created", function () {
+        client.assert(response.status === 201, "Expected 201 Created");
+        client.assert(response.body.data.token_type === "Bearer", "Expected bearer token");
+    });
+    client.global.set("mobile_token", response.body.data.token);
+%}
+
+### Get current user with mobile token
+# @name getMobileUser
+GET {{base_url}}/api/v1/user
+Accept: application/json
+Authorization: Bearer {{mobile_token}}
+
+> {%
+    client.test("Mobile user is authenticated", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.data.role === "student", "Expected student role");
+    });
+%}
+
+### Revoke current mobile token
+# @name revokeMobileToken
+DELETE {{base_url}}/api/v1/auth/tokens/current
+Accept: application/json
+Authorization: Bearer {{mobile_token}}
+
+> {%
+    client.test("Mobile token is revoked", function () {
+        client.assert(response.status === 204, "Expected 204 No Content");
+    });
+    client.global.clear("mobile_token");
+%}
+
+### Initialize SPA CSRF protection
+# @name initializeCsrf
+GET {{base_url}}/sanctum/csrf-cookie
+Accept: application/json
+Origin: http://localhost:5173
+
+> {%
+    client.test("CSRF cookie is issued", function () {
+        client.assert(response.status === 204, "Expected 204 No Content");
+        client.assert(response.cookiesByName("XSRF-TOKEN").length > 0, "Missing XSRF-TOKEN cookie");
+    });
+    const csrfCookie = response.cookiesByName("XSRF-TOKEN")[0];
+    client.global.set("xsrf_token", decodeURIComponent(csrfCookie.value));
+%}
+
+### Start SPA session
+# @name createSession
+# @no-log
+POST {{base_url}}/api/v1/auth/session
+Accept: application/json
+Content-Type: application/json
+Origin: http://localhost:5173
+X-XSRF-TOKEN: {{xsrf_token}}
+
+{
+  "email": "{{student_email}}",
+  "password": "{{student_password}}"
+}
+
+> {%
+    client.test("SPA session is created", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.data.role === "student", "Expected student role");
+    });
+%}
+
+### Get current user with SPA session
+# @name getSessionUser
+GET {{base_url}}/api/v1/user
+Accept: application/json
+Origin: http://localhost:5173
+
+> {%
+    client.test("SPA session is authenticated", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+    });
+%}
+
+### End SPA session
+# @name deleteSession
+DELETE {{base_url}}/api/v1/auth/session
+Accept: application/json
+Origin: http://localhost:5173
+X-XSRF-TOKEN: {{xsrf_token}}
+
+> {%
+    client.test("SPA session is ended", function () {
+        client.assert(response.status === 204, "Expected 204 No Content");
+    });
+    client.global.clear("xsrf_token");
+%}

@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\Parameter;
+use Dedoc\Scramble\Support\Generator\Response as OpenApiResponse;
+use Dedoc\Scramble\Support\Generator\Schema;
+use Dedoc\Scramble\Support\Generator\SecurityRequirement;
+use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Dedoc\Scramble\Support\Generator\Types\StringType;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -30,6 +38,81 @@ class AppServiceProvider extends ServiceProvider
             $email = Str::lower($request->string('email')->trim()->toString());
 
             return Limit::perMinute(5)->by(Str::transliterate($email.'|'.$request->ip()));
+        });
+
+        $this->configureOpenApi();
+    }
+
+    private function configureOpenApi(): void
+    {
+        if (! class_exists(Scramble::class)) {
+            return;
+        }
+
+        Scramble::configure()->withDocumentTransformers(function (OpenApi $openApi): void {
+            $openApi->security = [];
+            $openApi->components
+                ->addSecurityScheme(
+                    'bearerToken',
+                    SecurityScheme::http('bearer')
+                        ->as('bearerToken')
+                        ->setDescription('Sanctum mobile access token.'),
+                )
+                ->addSecurityScheme(
+                    'sessionCookie',
+                    SecurityScheme::apiKey('cookie', (string) config('session.cookie'))
+                        ->as('sessionCookie')
+                        ->setDescription('Sanctum SPA session cookie.'),
+                );
+
+            $securityByOperation = [
+                'v1.user.show' => ['bearerToken', 'sessionCookie'],
+                'v1.auth.session.destroy' => ['sessionCookie'],
+                'v1.auth.tokens.destroy' => ['bearerToken'],
+            ];
+
+            $metadataByOperation = [
+                'sanctum.csrf-cookie' => ['Initialize SPA CSRF protection', 'Sets the XSRF-TOKEN cookie required by stateful SPA requests.'],
+                'v1.auth.register' => ['Register a student', 'Creates a student account without starting a session.'],
+                'v1.auth.session.store' => ['Start an SPA session', 'Requires a Sanctum CSRF cookie and matching X-XSRF-TOKEN header.'],
+                'v1.auth.session.destroy' => ['End the SPA session', 'Requires the current SPA session and X-XSRF-TOKEN header.'],
+                'v1.auth.tokens.store' => ['Create a mobile token', 'Creates a Sanctum bearer token for the named mobile device.'],
+                'v1.auth.tokens.destroy' => ['Revoke the current mobile token', 'Revokes the bearer token used for this request.'],
+                'v1.user.show' => ['Get the current user', 'Accepts either an SPA session or a mobile bearer token.'],
+            ];
+
+            foreach ($openApi->paths as $path) {
+                foreach ($path->operations as $operation) {
+                    $operation->security = array_map(
+                        fn (string $scheme): SecurityRequirement => new SecurityRequirement([$scheme => []]),
+                        $securityByOperation[$operation->operationId] ?? [],
+                    );
+
+                    if (isset($metadataByOperation[$operation->operationId])) {
+                        [$summary, $description] = $metadataByOperation[$operation->operationId];
+                        $operation->summary($summary)->description($description);
+                    }
+
+                    if (in_array($operation->operationId, [
+                        'v1.auth.session.store',
+                        'v1.auth.session.destroy',
+                    ], true)) {
+                        $operation->addParameters([
+                            Parameter::make('X-XSRF-TOKEN', 'header')
+                                ->required(true)
+                                ->description('Decoded value of the XSRF-TOKEN cookie.')
+                                ->setSchema(Schema::fromType(new StringType)),
+                        ]);
+                    }
+
+                    foreach ($operation->responses ?? [] as $response) {
+                        if ($response instanceof OpenApiResponse && (int) $response->code === 204) {
+                            $response->content = [];
+                            $response->setDescription('No content');
+                        }
+                    }
+                }
+            }
         });
     }
 }

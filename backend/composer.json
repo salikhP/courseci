@@ -12,6 +12,7 @@
         "laravel/tinker": "^3.0"
     },
     "require-dev": {
+        "dedoc/scramble": "^0.13.50",
         "fakerphp/faker": "^1.23",
         "laravel/boost": "^2.10",
         "laravel/pail": "^1.2.5",
@@ -45,6 +46,10 @@
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "@php artisan dev"
+        ],
+        "docs:generate": [
+            "@php artisan scramble:analyze",
+            "@php artisan scramble:export"
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",

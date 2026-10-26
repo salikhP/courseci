@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\StoreTokenRequest;
-use App\Http\Resources\Api\V1\UserResource;
+use App\Http\Resources\Api\V1\MobileTokenResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,13 +30,9 @@ class TokenController extends Controller
             ->createToken($request->string('device_name')->toString(), ['mobile'])
             ->plainTextToken;
 
-        return response()->json([
-            'data' => [
-                'token' => $plainTextToken,
-                'token_type' => 'Bearer',
-                'user' => (new UserResource($user))->resolve($request),
-            ],
-        ], HttpResponse::HTTP_CREATED);
+        return (new MobileTokenResource($user, $plainTextToken))
+            ->response()
+            ->setStatusCode(HttpResponse::HTTP_CREATED);
     }
 
     public function destroy(Request $request): Response

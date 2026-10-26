@@ -8,6 +8,7 @@
 /.codex
 /.cursor/
 /.idea
+/http/http-client.private.env.json
 /.nova
 /.phpunit.cache
 /.vscode
