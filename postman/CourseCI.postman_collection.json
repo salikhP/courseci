@@ -1,0 +1,147 @@
+{
+  "info": {
+    "_postman_id": "f0517c4c-f0d1-4738-b0e8-e0606a802f90",
+    "name": "CourseCI API",
+    "description": "Executable CourseCI backend demonstration. Run the requests in collection order after starting and seeding the Docker stack.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Register student",
+      "event": [
+        { "listen": "prerequest", "script": { "exec": ["pm.environment.set('student_email', `midterm.student.${Date.now()}@example.com`);"] } },
+        { "listen": "test", "script": { "exec": ["pm.test('Student registered', () => pm.response.to.have.status(201));", "pm.test('Role cannot be escalated', () => pm.expect(pm.response.json().data.role).to.eql('student'));"] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{student_name}}\",\n  \"email\": \"{{student_email}}\",\n  \"password\": \"{{student_password}}\",\n  \"password_confirmation\": \"{{student_password}}\",\n  \"role\": \"teacher\"\n}" },
+        "url": "{{base_url}}/api/v1/auth/register",
+        "description": "Creates a student. The extra role field demonstrates that public registration cannot create a teacher."
+      }
+    },
+    {
+      "name": "02 - Create student mobile token",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student token created', () => pm.response.to.have.status(201));", "pm.environment.set('student_token', pm.response.json().data.token);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{student_email}}\",\n  \"password\": \"{{student_password}}\",\n  \"device_name\": \"Postman student\"\n}" },
+        "url": "{{base_url}}/api/v1/auth/tokens"
+      }
+    },
+    {
+      "name": "03 - Get current student",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Authenticated student returned', () => pm.response.to.have.status(200));", "pm.test('Email matches', () => pm.expect(pm.response.json().data.email).to.eql(pm.environment.get('student_email')));"] } }],
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "{{base_url}}/api/v1/user"
+      }
+    },
+    {
+      "name": "04 - Initialize SPA CSRF cookie",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('CSRF cookie initialized', () => pm.response.to.have.status(204));", "pm.environment.set('xsrf_token', decodeURIComponent(pm.cookies.get('XSRF-TOKEN') || ''));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Origin", "value": "{{frontend_origin}}" }], "url": "{{base_url}}/sanctum/csrf-cookie" }
+    },
+    {
+      "name": "05 - Start SPA session",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('SPA session started', () => pm.response.to.have.status(200));", "pm.environment.set('xsrf_token', decodeURIComponent(pm.cookies.get('XSRF-TOKEN') || ''));"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Origin", "value": "{{frontend_origin}}" }, { "key": "X-XSRF-TOKEN", "value": "{{xsrf_token}}" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{student_email}}\",\n  \"password\": \"{{student_password}}\"\n}" },
+        "url": "{{base_url}}/api/v1/auth/session"
+      }
+    },
+    {
+      "name": "06 - End SPA session",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('SPA session ended', () => pm.response.to.have.status(204));"] } }],
+      "request": { "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Origin", "value": "{{frontend_origin}}" }, { "key": "X-XSRF-TOKEN", "value": "{{xsrf_token}}" }], "url": "{{base_url}}/api/v1/auth/session" }
+    },
+    {
+      "name": "07 - Create teacher mobile token",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Teacher token created', () => pm.response.to.have.status(201));", "pm.environment.set('teacher_token', pm.response.json().data.token);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{teacher_email}}\",\n  \"password\": \"{{teacher_password}}\",\n  \"device_name\": \"Postman teacher\"\n}" },
+        "url": "{{base_url}}/api/v1/auth/tokens"
+      }
+    },
+    {
+      "name": "08 - List teacher courses",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Teacher courses returned', () => pm.response.to.have.status(200));"] } }],
+      "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/courses?status=all" }
+    },
+    {
+      "name": "09 - Create course",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Course created', () => pm.response.to.have.status(201));", "pm.environment.set('course_id', pm.response.json().data.id);"] } }],
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"Midterm Docker Demo\",\n  \"description\": \"Course created by the executable Postman collection.\"\n}" },
+        "url": "{{base_url}}/api/v1/courses"
+      }
+    },
+    {
+      "name": "10 - Get course",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Course returned', () => pm.response.to.have.status(200));"] } }],
+      "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/courses/{{course_id}}" }
+    },
+    {
+      "name": "11 - Update course",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Course updated', () => pm.response.to.have.status(200));", "pm.test('Title changed', () => pm.expect(pm.response.json().data.title).to.eql('Midterm Docker Demo (updated)'));"] } }],
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] },
+        "method": "PATCH",
+        "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"Midterm Docker Demo (updated)\"\n}" },
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}"
+      }
+    },
+    {
+      "name": "12 - Enroll student",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student enrolled', () => pm.response.to.have.status(201));", "pm.environment.set('enrollment_id', pm.response.json().data.id);"] } }],
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{student_email}}\"\n}" },
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/enrollments"
+      }
+    },
+    {
+      "name": "13 - List enrollments",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Enrollment list returned', () => pm.response.to.have.status(200));", "pm.test('New enrollment is listed', () => pm.expect(pm.response.json().data.some(item => String(item.id) === String(pm.environment.get('enrollment_id')))).to.be.true);"] } }],
+      "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/courses/{{course_id}}/enrollments" }
+    },
+    {
+      "name": "14 - List enrolled student courses",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student course list returned', () => pm.response.to.have.status(200));", "pm.test('Enrolled course is visible', () => pm.expect(pm.response.json().data.some(item => String(item.id) === String(pm.environment.get('course_id')))).to.be.true);"] } }],
+      "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] }, "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/courses" }
+    },
+    {
+      "name": "15 - Remove enrollment",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Enrollment removed', () => pm.response.to.have.status(204));"] } }],
+      "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/courses/{{course_id}}/enrollments/{{enrollment_id}}" }
+    },
+    {
+      "name": "16 - Archive course",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Course archived', () => pm.response.to.have.status(204));"] } }],
+      "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/courses/{{course_id}}" }
+    },
+    {
+      "name": "17 - Revoke teacher token",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Teacher token revoked', () => pm.response.to.have.status(204));"] } }],
+      "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/auth/tokens/current" }
+    },
+    {
+      "name": "18 - Revoke student token",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student token revoked', () => pm.response.to.have.status(204));"] } }],
+      "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] }, "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/auth/tokens/current" }
+    }
+  ]
+}

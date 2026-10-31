@@ -1,0 +1,153 @@
+// Seed the database for the default teacher credentials.
+// Run the registration and mobile-token requests in auth.http before student requests here.
+
+### Create a teacher API token for manual testing
+# @name createTeacherToken
+# @no-log
+POST {{base_url}}/api/v1/auth/tokens
+Accept: application/json
+Content-Type: application/json
+
+{
+  "email": "{{teacher_email}}",
+  "password": "{{teacher_password}}",
+  "device_name": "{{device_name}}"
+}
+
+> {%
+    client.test("Teacher token is created", function () {
+        client.assert(response.status === 201, "Expected 201 Created");
+        client.assert(response.body.data.user.role === "teacher", "Expected teacher role");
+    });
+    client.global.set("teacher_token", response.body.data.token);
+%}
+
+### List teacher's active courses
+# @name listTeacherCourses
+GET {{base_url}}/api/v1/courses
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+
+> {%
+    client.test("Courses are returned", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(Array.isArray(response.body.data), "Expected course collection");
+    });
+%}
+
+### Create a course
+# @name createCourse
+POST {{base_url}}/api/v1/courses
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+Content-Type: application/json
+
+{
+  "title": "HTTP Client Go Course",
+  "description": "Course created from the JetBrains HTTP Client."
+}
+
+> {%
+    client.test("Course is created", function () {
+        client.assert(response.status === 201, "Expected 201 Created");
+    });
+    client.global.set("course_id", response.body.data.id);
+%}
+
+### Get the course
+# @name getCourse
+GET {{base_url}}/api/v1/courses/{{course_id}}
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+
+### Update the course
+# @name updateCourse
+PATCH {{base_url}}/api/v1/courses/{{course_id}}
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+Content-Type: application/json
+
+{
+  "description": "Updated from the JetBrains HTTP Client."
+}
+
+> {%
+    client.test("Course is updated", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+    });
+%}
+
+### Enroll the registered HTTP client student
+# @name enrollStudent
+POST {{base_url}}/api/v1/courses/{{course_id}}/enrollments
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+Content-Type: application/json
+
+{
+  "email": "{{student_email}}"
+}
+
+> {%
+    client.test("Student is enrolled", function () {
+        client.assert(response.status === 201, "Expected 201 Created");
+    });
+    client.global.set("enrollment_id", response.body.data.id);
+%}
+
+### List course enrollments
+# @name listEnrollments
+GET {{base_url}}/api/v1/courses/{{course_id}}/enrollments
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+
+### List the student's active courses
+# @name listStudentCourses
+GET {{base_url}}/api/v1/courses
+Accept: application/json
+Authorization: Bearer {{mobile_token}}
+
+> {%
+    client.test("Student courses are returned", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+    });
+%}
+
+### Remove the enrollment
+# @name removeEnrollment
+DELETE {{base_url}}/api/v1/courses/{{course_id}}/enrollments/{{enrollment_id}}
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+
+> {%
+    client.test("Enrollment is removed", function () {
+        client.assert(response.status === 204, "Expected 204 No Content");
+    });
+    client.global.clear("enrollment_id");
+%}
+
+### Archive the course
+# @name archiveCourse
+DELETE {{base_url}}/api/v1/courses/{{course_id}}
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+
+> {%
+    client.test("Course is archived", function () {
+        client.assert(response.status === 204, "Expected 204 No Content");
+    });
+    client.global.clear("course_id");
+%}
+
+### Revoke the teacher API token
+# @name revokeTeacherToken
+DELETE {{base_url}}/api/v1/auth/tokens/current
+Accept: application/json
+Authorization: Bearer {{teacher_token}}
+
+> {%
+    client.test("Teacher token is revoked", function () {
+        client.assert(response.status === 204, "Expected 204 No Content");
+    });
+    client.global.clear("teacher_token");
+%}
