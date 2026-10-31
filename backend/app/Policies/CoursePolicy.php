@@ -41,7 +41,9 @@ class CoursePolicy
      */
     public function update(User $user, Course $course): bool
     {
-        return $user->role === UserRole::Teacher && $course->teacher_id === $user->id;
+        return $user->role === UserRole::Teacher
+            && $course->teacher_id === $user->id
+            && $course->archived_at === null;
     }
 
     /**
@@ -49,7 +51,7 @@ class CoursePolicy
      */
     public function delete(User $user, Course $course): bool
     {
-        return $this->update($user, $course);
+        return $user->role === UserRole::Teacher && $course->teacher_id === $user->id;
     }
 
     /**

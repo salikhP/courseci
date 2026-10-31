@@ -12,9 +12,9 @@ class EnrollmentPolicy
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(User $user): bool
+    public function viewAny(User $user, Course $course): bool
     {
-        return $user->role === UserRole::Teacher;
+        return $this->ownsCourse($user, $course);
     }
 
     /**
@@ -23,7 +23,7 @@ class EnrollmentPolicy
     public function view(User $user, Enrollment $enrollment): bool
     {
         return $enrollment->student_id === $user->id
-            || $this->managesCourse($user, $enrollment->course);
+            || $this->ownsCourse($user, $enrollment->course);
     }
 
     /**
@@ -31,7 +31,7 @@ class EnrollmentPolicy
      */
     public function create(User $user, Course $course): bool
     {
-        return $this->managesCourse($user, $course);
+        return $this->managesActiveCourse($user, $course);
     }
 
     /**
@@ -39,7 +39,7 @@ class EnrollmentPolicy
      */
     public function update(User $user, Enrollment $enrollment): bool
     {
-        return $this->managesCourse($user, $enrollment->course);
+        return $this->managesActiveCourse($user, $enrollment->course);
     }
 
     /**
@@ -66,8 +66,13 @@ class EnrollmentPolicy
         return false;
     }
 
-    private function managesCourse(User $user, Course $course): bool
+    private function ownsCourse(User $user, Course $course): bool
     {
         return $user->role === UserRole::Teacher && $course->teacher_id === $user->id;
+    }
+
+    private function managesActiveCourse(User $user, Course $course): bool
+    {
+        return $this->ownsCourse($user, $course) && $course->archived_at === null;
     }
 }

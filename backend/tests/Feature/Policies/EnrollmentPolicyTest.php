@@ -21,9 +21,11 @@ class EnrollmentPolicyTest extends TestCase
         $course = Course::factory()->for($owner, 'teacher')->create();
         $enrollment = Enrollment::factory()->for($course)->for($student, 'student')->create();
 
+        $this->assertTrue(Gate::forUser($owner)->allows('viewAny', [Enrollment::class, $course]));
         $this->assertTrue(Gate::forUser($owner)->allows('create', [Enrollment::class, $course]));
         $this->assertTrue(Gate::forUser($owner)->allows('view', $enrollment));
         $this->assertTrue(Gate::forUser($owner)->allows('delete', $enrollment));
+        $this->assertFalse(Gate::forUser($otherTeacher)->allows('viewAny', [Enrollment::class, $course]));
         $this->assertFalse(Gate::forUser($otherTeacher)->allows('create', [Enrollment::class, $course]));
         $this->assertFalse(Gate::forUser($otherTeacher)->allows('view', $enrollment));
     }
@@ -38,5 +40,17 @@ class EnrollmentPolicyTest extends TestCase
         $this->assertTrue(Gate::forUser($student)->allows('view', $enrollment));
         $this->assertFalse(Gate::forUser($student)->allows('delete', $enrollment));
         $this->assertFalse(Gate::forUser($otherStudent)->allows('view', $enrollment));
+    }
+
+    public function test_owner_can_view_but_cannot_change_enrollments_in_archived_course(): void
+    {
+        $owner = User::factory()->teacher()->create();
+        $course = Course::factory()->for($owner, 'teacher')->create(['archived_at' => now()]);
+        $enrollment = Enrollment::factory()->for($course)->create();
+
+        $this->assertTrue(Gate::forUser($owner)->allows('viewAny', [Enrollment::class, $course]));
+        $this->assertTrue(Gate::forUser($owner)->allows('view', $enrollment));
+        $this->assertFalse(Gate::forUser($owner)->allows('create', [Enrollment::class, $course]));
+        $this->assertFalse(Gate::forUser($owner)->allows('delete', $enrollment));
     }
 }

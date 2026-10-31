@@ -39,4 +39,14 @@ class CoursePolicyTest extends TestCase
         $this->assertFalse(Gate::forUser($student)->allows('update', $course));
         $this->assertFalse(Gate::forUser($otherStudent)->allows('view', $course));
     }
+
+    public function test_owner_can_view_and_archive_but_cannot_update_archived_course(): void
+    {
+        $owner = User::factory()->teacher()->create();
+        $course = Course::factory()->for($owner, 'teacher')->create(['archived_at' => now()]);
+
+        $this->assertTrue(Gate::forUser($owner)->allows('view', $course));
+        $this->assertTrue(Gate::forUser($owner)->allows('delete', $course));
+        $this->assertFalse(Gate::forUser($owner)->allows('update', $course));
+    }
 }

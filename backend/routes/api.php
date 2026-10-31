@@ -3,7 +3,9 @@
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
+use App\Http\Controllers\Api\V1\CourseController;
 use App\Http\Controllers\Api\V1\CurrentUserController;
+use App\Http\Controllers\Api\V1\EnrollmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
@@ -29,7 +31,17 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             ->name('tokens.destroy');
     });
 
-    Route::get('/user', CurrentUserController::class)
-        ->middleware('auth:sanctum')
-        ->name('user.show');
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('/user', CurrentUserController::class)->name('user.show');
+
+        Route::scopeBindings()->group(function (): void {
+            Route::apiResource('courses.enrollments', EnrollmentController::class)
+                ->only(['index', 'store', 'destroy']);
+        });
+
+        Route::patch('/courses/{course}', [CourseController::class, 'update'])
+            ->name('courses.update');
+
+        Route::apiResource('courses', CourseController::class)->except('update');
+    });
 });

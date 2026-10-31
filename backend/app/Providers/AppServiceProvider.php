@@ -79,10 +79,22 @@ class AppServiceProvider extends ServiceProvider
                 'v1.auth.tokens.store' => ['Create a mobile token', 'Creates a Sanctum bearer token for the named mobile device.'],
                 'v1.auth.tokens.destroy' => ['Revoke the current mobile token', 'Revokes the bearer token used for this request.'],
                 'v1.user.show' => ['Get the current user', 'Accepts either an SPA session or a mobile bearer token.'],
+                'v1.courses.index' => ['List accessible courses', 'Teachers receive owned courses; students receive courses in which they are enrolled. Active courses are returned by default.'],
+                'v1.courses.store' => ['Create a course', 'Creates a new course owned by the authenticated teacher.'],
+                'v1.courses.show' => ['Get a course', 'Available to the owning teacher and enrolled students, including for archived courses.'],
+                'v1.courses.update' => ['Update a course', 'Updates an active course owned by the authenticated teacher.'],
+                'v1.courses.destroy' => ['Archive a course', 'Archives an owned course without deleting its history.'],
+                'v1.courses.enrollments.index' => ['List course enrollments', 'Lists students enrolled in a course owned by the authenticated teacher.'],
+                'v1.courses.enrollments.store' => ['Enroll a student', 'Enrolls an existing student account by email in an active owned course.'],
+                'v1.courses.enrollments.destroy' => ['Remove an enrollment', 'Removes access to an active course while preserving submissions and grades.'],
             ];
 
             foreach ($openApi->paths as $path) {
                 foreach ($path->operations as $operation) {
+                    if (str_starts_with($operation->operationId, 'v1.courses.')) {
+                        $securityByOperation[$operation->operationId] = ['bearerToken', 'sessionCookie'];
+                    }
+
                     $operation->security = array_map(
                         fn (string $scheme): SecurityRequirement => new SecurityRequirement([$scheme => []]),
                         $securityByOperation[$operation->operationId] ?? [],
