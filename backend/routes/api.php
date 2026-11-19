@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AssignmentController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
@@ -35,6 +36,12 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('/user', CurrentUserController::class)->name('user.show');
 
         Route::scopeBindings()->group(function (): void {
+            Route::patch('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'update'])
+                ->name('courses.assignments.update');
+
+            Route::apiResource('courses.assignments', AssignmentController::class)
+                ->except('update');
+
             Route::apiResource('courses.enrollments', EnrollmentController::class)
                 ->only(['index', 'store', 'destroy']);
         });

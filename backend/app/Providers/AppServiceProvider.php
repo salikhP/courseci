@@ -87,6 +87,11 @@ class AppServiceProvider extends ServiceProvider
                 'v1.courses.enrollments.index' => ['List course enrollments', 'Lists students enrolled in a course owned by the authenticated teacher.'],
                 'v1.courses.enrollments.store' => ['Enroll a student', 'Enrolls an existing student account by email in an active owned course.'],
                 'v1.courses.enrollments.destroy' => ['Remove an enrollment', 'Removes access to an active course while preserving submissions and grades.'],
+                'v1.courses.assignments.index' => ['List course assignments', 'Available to the owning teacher and enrolled students. Returns a paginated collection; status accepts active (default), archived, or all. Manual grade items are excluded.'],
+                'v1.courses.assignments.show' => ['Get an assignment', 'Available to the owning teacher and enrolled students. The assignment must belong to the course in the URL. Includes archived assignments for historical access.'],
+                'v1.courses.assignments.store' => ['Create an assignment', 'Creates an assignment and journal grade item in an active owned course. Dates are nullable and normalized to UTC; a deadline must follow the opening date. Maximum score is positive with at most two decimal places. Go grading checks are fixed and cannot be configured.'],
+                'v1.courses.assignments.update' => ['Update an assignment', 'Partially updates an active assignment in an active owned course. Omitted fields are preserved; optional fields may be cleared. After any submission exists, maximum score and opening date cannot change (422). Title, description, and deadline remain editable.'],
+                'v1.courses.assignments.destroy' => ['Archive an assignment', 'Archives an assignment in an active owned course without deleting submissions, grades, or journal history. Repeated requests preserve the original archive timestamp.'],
             ];
 
             foreach ($openApi->paths as $path) {

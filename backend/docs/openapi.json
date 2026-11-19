@@ -11,6 +11,463 @@
         }
     ],
     "paths": {
+        "/api/v1/courses/{course}/assignments/{assignment}": {
+            "patch": {
+                "operationId": "v1.courses.assignments.update",
+                "description": "Partially updates an active assignment in an active owned course. Omitted fields are preserved; optional fields may be cleared. After any submission exists, maximum score and opening date cannot change (422). Title, description, and deadline remain editable.",
+                "summary": "Update an assignment",
+                "tags": [
+                    "Assignment"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "description": "The course ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "assignment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The assignment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateAssignmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`AssignmentResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/AssignmentResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerToken": []
+                    },
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            },
+            "get": {
+                "operationId": "v1.courses.assignments.show",
+                "description": "Available to the owning teacher and enrolled students. The assignment must belong to the course in the URL. Includes archived assignments for historical access.",
+                "summary": "Get an assignment",
+                "tags": [
+                    "Assignment"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "description": "The course ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "assignment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The assignment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`AssignmentResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/AssignmentResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerToken": []
+                    },
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            },
+            "delete": {
+                "operationId": "v1.courses.assignments.destroy",
+                "description": "Archives an assignment in an active owned course without deleting submissions, grades, or journal history. Repeated requests preserve the original archive timestamp.",
+                "summary": "Archive an assignment",
+                "tags": [
+                    "Assignment"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "description": "The course ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "assignment",
+                        "in": "path",
+                        "required": true,
+                        "description": "The assignment ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerToken": []
+                    },
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/courses/{course}/assignments": {
+            "get": {
+                "operationId": "v1.courses.assignments.index",
+                "description": "Available to the owning teacher and enrolled students. Returns a paginated collection; status accepts active (default), archived, or all. Manual grade items are excluded.",
+                "summary": "List course assignments",
+                "tags": [
+                    "Assignment"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "description": "The course ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "archived",
+                                "all"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated set of `AssignmentResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/AssignmentResource"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first",
+                                                "last",
+                                                "prev",
+                                                "next"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "links",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "links",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerToken": []
+                    },
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            },
+            "post": {
+                "operationId": "v1.courses.assignments.store",
+                "description": "Creates an assignment and journal grade item in an active owned course. Dates are nullable and normalized to UTC; a deadline must follow the opening date. Maximum score is positive with at most two decimal places. Go grading checks are fixed and cannot be configured.",
+                "summary": "Create an assignment",
+                "tags": [
+                    "Assignment"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "description": "The course ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreAssignmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`AssignmentResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/AssignmentResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerToken": []
+                    },
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            }
+        },
         "/api/v1/courses/{course}": {
             "patch": {
                 "operationId": "v1.courses.update",
@@ -1068,6 +1525,113 @@
             }
         },
         "schemas": {
+            "AssignmentResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "course_id": {
+                        "type": "integer"
+                    },
+                    "grade_item_id": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "max_score": {
+                        "type": "string"
+                    },
+                    "opens_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "due_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "archived_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "is_open": {
+                        "type": "boolean"
+                    },
+                    "grading_requirements": {
+                        "type": "object",
+                        "properties": {
+                            "language": {
+                                "type": "string",
+                                "const": "go"
+                            },
+                            "checks": {
+                                "type": "array",
+                                "prefixItems": [
+                                    {
+                                        "type": "string",
+                                        "const": "go build ./..."
+                                    },
+                                    {
+                                        "type": "string",
+                                        "const": "go vet ./..."
+                                    },
+                                    {
+                                        "type": "string",
+                                        "const": "go test ./..."
+                                    }
+                                ],
+                                "minItems": 3,
+                                "maxItems": 3
+                            }
+                        },
+                        "required": [
+                            "language",
+                            "checks"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "course_id",
+                    "grade_item_id",
+                    "title",
+                    "description",
+                    "max_score",
+                    "opens_at",
+                    "due_at",
+                    "archived_at",
+                    "is_open",
+                    "grading_requirements",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "AssignmentResource"
+            },
             "CourseResource": {
                 "type": "object",
                 "properties": {
@@ -1202,6 +1766,49 @@
                 ],
                 "title": "SessionLoginRequest"
             },
+            "StoreAssignmentRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 10000
+                    },
+                    "max_score": {
+                        "type": "number",
+                        "minimum": 0.01,
+                        "maximum": 999999.99
+                    },
+                    "opens_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "due_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "grading_requirements": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "title",
+                    "max_score"
+                ],
+                "title": "StoreAssignmentRequest"
+            },
             "StoreCourseRequest": {
                 "type": "object",
                 "properties": {
@@ -1297,6 +1904,45 @@
                     "email"
                 ],
                 "title": "TeacherResource"
+            },
+            "UpdateAssignmentRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 10000
+                    },
+                    "max_score": {
+                        "type": "number",
+                        "minimum": 0.01,
+                        "maximum": 999999.99
+                    },
+                    "opens_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "due_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "grading_requirements": {
+                        "type": "string"
+                    }
+                },
+                "title": "UpdateAssignmentRequest"
             },
             "UpdateCourseRequest": {
                 "type": "object",
@@ -1404,8 +2050,8 @@
                     }
                 }
             },
-            "AuthorizationException": {
-                "description": "Authorization error",
+            "ModelNotFoundException": {
+                "description": "Not found",
                 "content": {
                     "application/json": {
                         "schema": {
@@ -1423,8 +2069,8 @@
                     }
                 }
             },
-            "ModelNotFoundException": {
-                "description": "Not found",
+            "AuthorizationException": {
+                "description": "Authorization error",
                 "content": {
                     "application/json": {
                         "schema": {

@@ -29,9 +29,13 @@ class AssignmentPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user, GradeItem $gradeItem): bool
+    public function create(User $user, Course|GradeItem $parent): bool
     {
-        return $this->managesCourse($user, $gradeItem->course);
+        $course = $parent instanceof Course ? $parent : $parent->course;
+
+        return $this->managesCourse($user, $course)
+            && $course->archived_at === null
+            && ($parent instanceof Course || $parent->archived_at === null);
     }
 
     /**
@@ -39,7 +43,7 @@ class AssignmentPolicy
      */
     public function update(User $user, Assignment $assignment): bool
     {
-        return $this->managesCourse($user, $assignment->gradeItem->course);
+        return $this->create($user, $assignment->gradeItem);
     }
 
     /**
@@ -47,7 +51,8 @@ class AssignmentPolicy
      */
     public function delete(User $user, Assignment $assignment): bool
     {
-        return $this->update($user, $assignment);
+        return $this->managesCourse($user, $assignment->gradeItem->course)
+            && $assignment->gradeItem->course->archived_at === null;
     }
 
     /**
