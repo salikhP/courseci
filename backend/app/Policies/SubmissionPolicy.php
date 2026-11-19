@@ -13,9 +13,15 @@ class SubmissionPolicy
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(User $user): bool
+    public function viewAny(User $user, Assignment $assignment): bool
     {
-        return true;
+        if ($this->managesCourse($user, $assignment->gradeItem->course)) {
+            return true;
+        }
+
+        return $user->role === UserRole::Student
+            && ($this->create($user, $assignment)
+                || $assignment->submissions()->where('student_id', $user->id)->exists());
     }
 
     /**

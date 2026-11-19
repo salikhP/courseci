@@ -48,4 +48,20 @@ class SubmissionPolicyTest extends TestCase
         $this->assertFalse(Gate::forUser($otherTeacher)->allows('view', $submission));
         $this->assertFalse(Gate::forUser($student)->allows('update', $submission));
     }
+
+    public function test_history_list_is_available_only_to_owner_teacher_or_relevant_student(): void
+    {
+        $assignment = Assignment::factory()->create();
+        $student = User::factory()->student()->create();
+        $outsider = User::factory()->student()->create();
+        Submission::factory()->for($assignment)->for($student, 'student')->create();
+        $teacher = $assignment->gradeItem->course->teacher;
+
+        $this->assertTrue(Gate::forUser($teacher)->allows('viewAny', [Submission::class, $assignment]));
+        $this->assertTrue(Gate::forUser($student)->allows('viewAny', [Submission::class, $assignment]));
+        $this->assertFalse(Gate::forUser($outsider)->allows('viewAny', [Submission::class, $assignment]));
+        $this->assertFalse(Gate::forUser(User::factory()->teacher()->create())->allows('viewAny', [Submission::class, $assignment]));
+        Enrollment::factory()->for($assignment->gradeItem->course)->for($outsider, 'student')->create();
+        $this->assertTrue(Gate::forUser($outsider)->allows('viewAny', [Submission::class, $assignment]));
+    }
 }

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['assignment_id', 'student_id', 'repository_url', 'commit_sha', 'attempt_number', 'status', 'submitted_at'])]
+#[Fillable(['assignment_id', 'student_id', 'repository_url', 'commit_sha', 'attempt_number', 'status', 'submitted_at', 'idempotency_key'])]
 class Submission extends Model
 {
     /** @use HasFactory<SubmissionFactory> */
@@ -35,6 +35,11 @@ class Submission extends Model
     public function grade(): HasOne
     {
         return $this->hasOne(Grade::class);
+    }
+
+    public function latestGradingRun(): HasOne
+    {
+        return $this->hasOne(GradingRun::class)->latestOfMany('run_number');
     }
 
     /** @return array<string, string> */

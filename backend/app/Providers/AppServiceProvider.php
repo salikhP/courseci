@@ -9,6 +9,7 @@ use Dedoc\Scramble\Support\Generator\Response as OpenApiResponse;
 use Dedoc\Scramble\Support\Generator\Schema;
 use Dedoc\Scramble\Support\Generator\SecurityRequirement;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Dedoc\Scramble\Support\Generator\Types\ObjectType;
 use Dedoc\Scramble\Support\Generator\Types\StringType;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -92,6 +93,9 @@ class AppServiceProvider extends ServiceProvider
                 'v1.courses.assignments.store' => ['Create an assignment', 'Creates an assignment and journal grade item in an active owned course. Dates are nullable and normalized to UTC; a deadline must follow the opening date. Maximum score is positive with at most two decimal places. Go grading checks are fixed and cannot be configured.'],
                 'v1.courses.assignments.update' => ['Update an assignment', 'Partially updates an active assignment in an active owned course. Omitted fields are preserved; optional fields may be cleared. After any submission exists, maximum score and opening date cannot change (422). Title, description, and deadline remain editable.'],
                 'v1.courses.assignments.destroy' => ['Archive an assignment', 'Archives an assignment in an active owned course without deleting submissions, grades, or journal history. Repeated requests preserve the original archive timestamp.'],
+                'v1.courses.assignments.submissions.index' => ['List assignment submissions', 'The course owner sees every student attempt; students see only their own. Students retain access to their own history after enrollment removal. Optional status filter accepts queued, running, passed, failed, timed_out, or system_error.'],
+                'v1.courses.assignments.submissions.show' => ['Get submission and grading feedback', 'Available only to the submitting student and the course owner. Includes the latest grading result, grading-run history, and a grade when one references this attempt. Internal runner metadata is omitted.'],
+                'v1.courses.assignments.submissions.store' => ['Submit a repository', 'An enrolled student submits an HTTPS GitHub, GitLab, or Bitbucket owner/repository URL during the assignment window. Requires an Idempotency-Key UUID header: a new key creates an attempt (201), a retry with the same key and canonical URL returns the original (200), and a conflicting URL returns 409. Saves the attempt, initial grading run, and database job atomically. Repository visibility and existence are verified by the Phase 8 runner, not this endpoint.'],
             ];
 
             foreach ($openApi->paths as $path) {
@@ -120,6 +124,28 @@ class AppServiceProvider extends ServiceProvider
                                 ->description('Decoded value of the XSRF-TOKEN cookie.')
                                 ->setSchema(Schema::fromType(new StringType)),
                         ]);
+                    }
+
+                    if ($operation->operationId === 'v1.courses.assignments.submissions.store') {
+                        $operation->addParameters([
+                            Parameter::make('Idempotency-Key', 'header')->required(true)
+                                ->description('A new UUID per intended attempt. Reuse it for retries of that attempt.')
+                                ->setSchema(Schema::fromType((new StringType)->format('uuid'))),
+                        ]);
+
+                        foreach ($operation->responses as $response) {
+                            if ($response instanceof OpenApiResponse && (int) $response->code === 200) {
+                                $response->setDescription('Previously accepted submission returned for an idempotent retry.');
+                                $operation->addResponse((clone $response)->setCode(201)
+                                    ->setDescription('Submission, initial grading run, and grading job created.'));
+                                break;
+                            }
+                        }
+
+                        $operation->addResponse(OpenApiResponse::make(409)
+                            ->setDescription('Idempotency key already used for a different repository URL.')
+                            ->setContent('application/json', Schema::fromType((new ObjectType)
+                                ->addProperty('message', new StringType)->setRequired(['message']))));
                     }
 
                     foreach ($operation->responses ?? [] as $response) {

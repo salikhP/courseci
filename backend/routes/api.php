@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Auth\TokenController;
 use App\Http\Controllers\Api\V1\CourseController;
 use App\Http\Controllers\Api\V1\CurrentUserController;
 use App\Http\Controllers\Api\V1\EnrollmentController;
+use App\Http\Controllers\Api\V1\SubmissionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
@@ -36,6 +37,9 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('/user', CurrentUserController::class)->name('user.show');
 
         Route::scopeBindings()->group(function (): void {
+            Route::apiResource('courses.assignments.submissions', SubmissionController::class)
+                ->only(['index', 'store', 'show']);
+
             Route::patch('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'update'])
                 ->name('courses.assignments.update');
 

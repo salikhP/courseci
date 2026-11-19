@@ -426,7 +426,590 @@
       }
     },
     {
-      "name": "23 - Archive assignment",
+      "name": "23 - Submit repository",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('submission_key', pm.variables.replaceIn('{{$guid}}'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Submit repository', () => pm.response.to.have.status(201));",
+              "pm.environment.set('submission_id', pm.response.json().data.id);",
+              "pm.test('Queued attempt one', () => { pm.expect(pm.response.json().data.status).to.eql('queued'); pm.expect(pm.response.json().data.attempt_number).to.eql(1); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{submission_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"repository_url\": \"https://github.com/courseci-demo/calculator.git\"\n}"
+        }
+      }
+    },
+    {
+      "name": "24 - Retry submission without duplicate attempt",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Retry submission without duplicate attempt', () => pm.response.to.have.status(200));",
+              "pm.test('Original attempt returned', () => pm.expect(String(pm.response.json().data.id)).to.eql(String(pm.environment.get('submission_id'))));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{submission_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"repository_url\": \"https://github.com/courseci-demo/calculator.git\"\n}"
+        }
+      }
+    },
+    {
+      "name": "25 - Reject reused key for another repository",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Reject reused key for another repository', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{submission_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"repository_url\": \"https://github.com/courseci-demo/different\"\n}"
+        }
+      }
+    },
+    {
+      "name": "26 - Resubmit repository as next attempt",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Resubmit repository as next attempt', () => pm.response.to.have.status(201));",
+              "pm.environment.set('submission_id', pm.response.json().data.id);",
+              "pm.test('Attempt two', () => pm.expect(pm.response.json().data.attempt_number).to.eql(2));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"repository_url\": \"https://github.com/courseci-demo/calculator.git\"\n}"
+        }
+      }
+    },
+    {
+      "name": "27 - List teacher submissions",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('List teacher submissions', () => pm.response.to.have.status(200));",
+              "pm.test('Both attempts retained', () => pm.expect(pm.response.json().data.length).to.eql(2));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{teacher_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions"
+      }
+    },
+    {
+      "name": "28 - List student submissions",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('List student submissions', () => pm.response.to.have.status(200));",
+              "pm.test('Own attempt history', () => pm.expect(pm.response.json().data.length).to.eql(2));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions"
+      }
+    },
+    {
+      "name": "29 - View student submission feedback",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('View student submission feedback', () => pm.response.to.have.status(200));",
+              "pm.test('Queued grading result', () => pm.expect(pm.response.json().data.grading_result.status).to.eql('queued'));",
+              "pm.test('Internal metadata hidden', () => pm.expect(pm.response.json().data.grading_result).not.to.have.property('runner_metadata'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions/{{submission_id}}"
+      }
+    },
+    {
+      "name": "30 - View teacher submission",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('View teacher submission', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{teacher_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions/{{submission_id}}"
+      }
+    },
+    {
+      "name": "31 - Reject maximum score edit after submission",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Reject maximum score edit after submission', () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{teacher_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"max_score\": \"25.00\"\n}"
+        }
+      }
+    },
+    {
+      "name": "32 - Reject opening edit after submission",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Reject opening edit after submission', () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{teacher_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"opens_at\": \"2027-01-01T00:00:00Z\"\n}"
+        }
+      }
+    },
+    {
+      "name": "33 - Reject unsafe repository URL",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Reject unsafe repository URL', () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"repository_url\": \"http://127.0.0.1/private/repo\"\n}"
+        }
+      }
+    },
+    {
+      "name": "34 - Edit deadline after submission",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Edit deadline after submission', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{teacher_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"due_at\": \"2020-01-01T00:00:00Z\"\n}"
+        }
+      }
+    },
+    {
+      "name": "35 - Reject late resubmission",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Reject late resubmission', () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"repository_url\": \"https://github.com/courseci-demo/calculator.git\"\n}"
+        }
+      }
+    },
+    {
+      "name": "36 - Clear assignment deadline",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Clear assignment deadline', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{teacher_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"due_at\": null\n}"
+        }
+      }
+    },
+    {
+      "name": "37 - Archive assignment",
       "event": [
         {
           "listen": "test",
@@ -459,7 +1042,7 @@
       }
     },
     {
-      "name": "24 - Repeat assignment archive",
+      "name": "38 - Repeat assignment archive",
       "event": [
         {
           "listen": "test",
@@ -492,7 +1075,52 @@
       }
     },
     {
-      "name": "25 - List archived assignments",
+      "name": "39 - Reject archived assignment submission",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Reject archived assignment submission', () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"repository_url\": \"https://github.com/courseci-demo/calculator.git\"\n}"
+        }
+      }
+    },
+    {
+      "name": "40 - List archived assignments",
       "event": [
         {
           "listen": "test",
@@ -526,7 +1154,7 @@
       }
     },
     {
-      "name": "26 - Get archived student assignment",
+      "name": "41 - Get archived student assignment",
       "event": [
         {
           "listen": "test",
@@ -560,7 +1188,7 @@
       }
     },
     {
-      "name": "27 - Reject archived assignment edit",
+      "name": "42 - Reject archived assignment edit",
       "event": [
         {
           "listen": "test",
@@ -601,12 +1229,90 @@
       }
     },
     {
-      "name": "28 - Remove enrollment",
+      "name": "43 - Remove enrollment",
       "event": [{ "listen": "test", "script": { "exec": ["pm.test('Enrollment removed', () => pm.response.to.have.status(204));"] } }],
       "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/courses/{{course_id}}/enrollments/{{enrollment_id}}" }
     },
     {
-      "name": "29 - Reject removed student assignment access",
+      "name": "44 - Removed student retains own submission history",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Removed student retains own submission history', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions/{{submission_id}}"
+      }
+    },
+    {
+      "name": "45 - Reject removed student resubmission",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Reject removed student resubmission', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{student_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/courses/{{course_id}}/assignments/{{assignment_id}}/submissions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"repository_url\": \"https://github.com/courseci-demo/calculator.git\"\n}"
+        }
+      }
+    },
+    {
+      "name": "46 - Reject removed student assignment access",
       "event": [
         {
           "listen": "test",
@@ -639,17 +1345,17 @@
       }
     },
     {
-      "name": "30 - Archive course",
+      "name": "47 - Archive course",
       "event": [{ "listen": "test", "script": { "exec": ["pm.test('Course archived', () => pm.response.to.have.status(204));"] } }],
       "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/courses/{{course_id}}" }
     },
     {
-      "name": "31 - Revoke teacher token",
+      "name": "48 - Revoke teacher token",
       "event": [{ "listen": "test", "script": { "exec": ["pm.test('Teacher token revoked', () => pm.response.to.have.status(204));"] } }],
       "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacher_token}}", "type": "string" }] }, "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/auth/tokens/current" }
     },
     {
-      "name": "32 - Revoke student token",
+      "name": "49 - Revoke student token",
       "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student token revoked', () => pm.response.to.have.status(204));"] } }],
       "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] }, "method": "DELETE", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/v1/auth/tokens/current" }
     }

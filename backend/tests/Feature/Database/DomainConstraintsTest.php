@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DomainConstraintsTest extends TestCase
@@ -85,6 +86,17 @@ class DomainConstraintsTest extends TestCase
         $this->expectException(QueryException::class);
 
         Submission::factory()->create(['attempt_number' => 0]);
+    }
+
+    public function test_database_rejects_duplicate_idempotency_key_for_same_student_and_assignment(): void
+    {
+        $submission = Submission::factory()->create(['idempotency_key' => (string) Str::uuid()]);
+
+        $this->expectException(QueryException::class);
+
+        Submission::factory()->for($submission->assignment)->for($submission->student, 'student')->create([
+            'attempt_number' => 2, 'idempotency_key' => $submission->idempotency_key,
+        ]);
     }
 
     public function test_database_rejects_an_invalid_submission_status(): void
